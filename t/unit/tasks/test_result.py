@@ -453,6 +453,17 @@ class test_ResultSet:
         b.supports_native_join = True
         x.get()
         x.join_native.assert_called()
+    
+    @patch('celery.result.task_join_will_block')
+    def test_get_sync_subtask_option(self, task_join_will_block):
+        task_join_will_block.return_value = True
+        x = self.app.ResultSet([self.app.AsyncResult(str(t)) for t in [1, 2, 3]])
+        b = x.results[0].backend = Mock()
+        b.supports_native_join = False
+        with pytest.raises(RuntimeError):
+            x.get()
+        with pytest.raises(TimeoutError):
+            x.get(disable_sync_subtasks=False, timeout=0.1)
 
     def test_eq_ne(self):
         g1 = self.app.ResultSet([
